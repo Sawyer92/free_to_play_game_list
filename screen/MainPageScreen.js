@@ -8,18 +8,18 @@ import { NavigationContainer, useNavigationContainerRef } from '@react-navigatio
 
 export default function MainPageScreen({navigation}) {
 
-const baseUrl = 'https://www.freetogame.com/api/games';
+const baseUrl = 'https://www.freetogame.com/api/games?platform=';
 
-let dataToShow = [{id: 1, value: '10'},{id: 2, value: '20'}, {id: 3, value: '30'}, {id: 4, value: 'Tutti'}];
-//const baseUrl = 'https://free-to-play-games-database.p.rapidapi.com/api/games';
+const dataToShow = [{id: 1, value: '10'},{id: 2, value: '20'}, {id: 3, value: '30'}, {id: 4, value: 'All'}];
+const platformToShow = [{id: 1, value: 'all'}, {id: 2, value: 'browser'}, {id: 3, value: 'pc'}]; 
 
-const specificGameUrl = 'https://www.freetogame.com/api/game?id=51';
+const platformUrl ='?platform=';
 const alphabeticalOrderCondition = '?sort-by=alphabetical';
 const [gamesRetrieved, setGamesRetrieved] = useState([]);
-const [topTenGames, setTopTenGames] = useState();
 const [isLoading, setIsLoading] = useState(true);
 const [limitToShow, setLimitToShow] = useState(dataToShow[0].value);
 const [isDropDownFocus, setIsDropDownFocus] = useState(false);
+const [platformChoosed, setPlatformChoosed] = useState(platformToShow[0].value);
 
 
 const options = {
@@ -31,14 +31,30 @@ const options = {
   }
 };
 
-
-
-function getTop10GamesFromAPI (){
+function getGamesByPlatform (platformType) {
+  let urlToUse = baseUrl+platformType;
   let result = [];
-  fetch(baseUrl).then((response) => response.json())
+  fetch(urlToUse).then((response) => response.json())
   .then((data) => {
-    limitToShow == 'Tutti' ? result=data : result = data.slice(0,limitToShow);
+    result = data.slice(0,10);
+    setGamesRetrieved(result);
+    setIsLoading(false);
+    setLimitToShow(dataToShow[0].value);
+    setPlatformChoosed(platformType)
+  }).catch(function (error){
+    console.log('Si è verificato un errore', error);
+  });
+}
+
+
+function getTop10GamesFromAPI (dataLimit){
+  let result = [];
+  let url = baseUrl+platformChoosed;
+  fetch(url).then((response) => response.json())
+  .then((data) => {
+    dataLimit == 'All' ? result=data : result = data.slice(0,dataLimit);
     setGamesRetrieved(result)
+    setLimitToShow(dataLimit);
     setIsLoading(false);
   }).catch(function (error){
     console.log('Si è verificato un errore', error);
@@ -46,8 +62,9 @@ function getTop10GamesFromAPI (){
 }
 
   useEffect(() => {
-    getTop10GamesFromAPI();
-  },[limitToShow]);
+    getTop10GamesFromAPI(limitToShow);
+    navigation.setOptions({headerShown: false});
+  },[]);
   
 
   const getContenuto = () => {
@@ -55,13 +72,12 @@ function getTop10GamesFromAPI (){
      return  <ActivityIndicator size="large"/> 
     } else {
       return ( 
-        <FlatList numColumns={2} contentContainerStyle={styles.gameGridView}
+        <FlatList numColumns={2} contentContainerStyle={styles.gameGridView} ItemSeparatorComponent={() => <View style={{height: 2}} />}
           data={gamesRetrieved}
-          renderItem ={({item})=>
+          renderItem ={({item, index})=>
           <TouchableOpacity style={styles.boxGameContainer} 
           onPress={() => navigation.navigate('DetailGamePage', {gameId: item.id})} >
               <Image source={{uri: `${item.thumbnail}`}} style={styles.gameImage} />
-              <Text style={styles.gameTitle}>{item.title}</Text>
           </TouchableOpacity> 
           }
         />
@@ -71,9 +87,9 @@ function getTop10GamesFromAPI (){
 
   const getTitle = () =>{
     if(limitToShow==='Tutti') {
-     return  <Text style={styles.headerTextStyle}>Elenco giochi free-to-play</Text> 
+     return  <Text style={styles.headerTextStyle}>Free-to-play games list</Text> 
     }  else {
-      return <Text style={styles.headerTextStyle}>Top {limitToShow} giochi free-to-play</Text> 
+      return <Text style={styles.headerTextStyle}>Top {limitToShow} free-to-play games</Text> 
     }
   }
 
@@ -82,22 +98,40 @@ function getTop10GamesFromAPI (){
   return (
     <View style={styles.container}>
         {getTitle()}
-        <View style={styles.dropDownView}>
-          <Text style={{color: '#EDF2F4', fontSize: 20}}>Mostra: </Text>
+        <View style={{flexDirection: 'row'}}>
+          <View style={styles.dropDownView}>
+            <Text style={{color: '#EDF2F4', fontSize: 20}}>Show: </Text>
+            <Dropdown 
+              style={[styles.dropdown, isDropDownFocus && { borderColor: 'blue' }]}
+              data={dataToShow}
+              labelField="value"
+              valueField="id"
+              placeholder={limitToShow}
+              placeholderStyle={styles.placeholderStyle}
+              selectedTextStyle={styles.selectedTextStyle}
+              inputSearchStyle={styles.inputSearchStyle}
+              value={limitToShow}
+              onChange={item => {
+               // 
+                getTop10GamesFromAPI(item.value);
+              }}
+            />
+          <Text style={{color: '#EDF2F4', fontSize: 20, paddingLeft: 25}}>Filter : </Text>
           <Dropdown 
-            style={[styles.dropdown, isDropDownFocus && { borderColor: 'blue' }]}
-            data={dataToShow}
-            labelField="value"
-            valueField="id"
-            placeholder={limitToShow}
-            placeholderStyle={styles.placeholderStyle}
-            selectedTextStyle={styles.selectedTextStyle}
-            inputSearchStyle={styles.inputSearchStyle}
-            value={limitToShow}
-            onChange={item => {
-              setLimitToShow(item.value);
-            }}
-          />
+              style={[styles.dropdown, isDropDownFocus && { borderColor: 'blue' }]}
+              data={platformToShow}
+              labelField="value"
+              valueField="id"
+              placeholder={platformChoosed}
+              placeholderStyle={styles.placeholderStyle}
+              selectedTextStyle={styles.selectedTextStyle}
+              inputSearchStyle={styles.inputSearchStyle}
+              value={platformChoosed}
+              onChange={item => {
+                getGamesByPlatform(item.value);
+              }}
+            />
+          </View>        
         </View>
         {
         getContenuto()       
@@ -109,19 +143,19 @@ function getTop10GamesFromAPI (){
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#2b2d42',
-    height: '100%'
+    height: '100%',
   },
   headerTextStyle:{
     fontWeight:'bold',
     fontSize: 25,
     color: 'white',
-    marginTop: 15,
+    marginTop: 45,
     marginLeft: 5
   },
   gameGridView:{
-    marginTop: 20,
-    justifyContent: 'space-between',
-    marginVertical: 8,
+    marginTop: 25,
+    marginRight: 5,
+    alignContent: 'space-between',
   },
    boxGameContainer: {
     width: '50%',
@@ -130,23 +164,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'black',
     borderRadius: 10,
-    marginBottom: 15,
-    marginLeft: 5,
+    marginBottom: 5,
+    marginRight: 5,
     alignItems: 'center'
   },
   dropDownView:{
     flexDirection: 'row',
-    justifyContent: 'space-around',
     alignContent: 'stretch',
-    marginTop: 20
+    marginTop: 20,
+    marginLeft: 10,
+    alignItems: 'center'
   },
   gameImage: {
     flex:1, 
     width: '100%',
-    height: 100,
+    height: '100%',
+    borderRadius: 10,
+    transform: [{ scale: 0.999 }]
   },
   gameTitle: {
-    fontSize: 20,
+    fontSize: 15,
     fontWeight: 'bold'
   },
   dropDownButton:{
@@ -172,11 +209,12 @@ const styles = StyleSheet.create({
   },
   dropdown: {
     height: 40,
-    width: 75,
+    width: 100,
     borderColor: 'white',
     borderWidth: 0.5,
     borderRadius: 8,
     paddingHorizontal: 10,
+    marginLeft: 10
   },
 
 });
